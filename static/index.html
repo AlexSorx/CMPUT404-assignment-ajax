@@ -31,29 +31,58 @@ var context = canvas.getContext("2d");
 var W = canvas.width  = window.innerWidth-6;
 var H = canvas.height = window.innerHeight-50;
 
+// background image for prettier aesthetics
+var backgroundImg = new Image();
+backgroundImg.onload = function () {
+    context.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+};
+backgroundImg.src = 'mountain.png';
 
 function sendJSONXMLHTTPRequest(url, objects, callback) {
     var xhr = new XMLHttpRequest();
+    
     xhr.onreadystatechange = function () {
         if (xhr.readyState==4) {
             try {
                 if (xhr.status==200) {
                     //XXX: parse some JSON from the request!
                     //XXX: Pass the data to the callback!
+
+                    callback(JSON.parse(xhr.responseText))
                 }
-            } 
+            }
+            
             catch(e) {
-                alert('Error: ' + e.name);
+                alert('Error: ' + e.name + e);
             }
         }
     };
     //XXX: POST to a URL
     //XXX: set the mimetype and the accept headers!
     // Remember to use application/json !
+    
+    xhr.open( "POST", url);
+    xhr.setRequestHeader('Accept', "application/json");
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.send(objects)
+    
+    
 }
 
 
 world = {};
+
+
+
+//https://stackoverflow.com/questions/1484506/random-color-generator to make it pretty:)
+function getRandomColor() {
+  var letters = '0123456789ABCDEF';
+  var color = '#';
+  for (var i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
 
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
@@ -83,8 +112,7 @@ function prepEntity(entity) {
 function clearFrame() {
     with(context) {
 	moveTo(0,0);
-	fillStyle = "#000";
-	fillRect(0,0,W,H);
+	context.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
     }
 
 }
@@ -136,8 +164,11 @@ function getPosition(e) {
 
 function addEntity(entity, data) {
     world[entity] = data;
+
     drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
+
+    sendJSONXMLHTTPRequest("/entity/" + entity, JSON.stringify(data), function() {});
 
 }
 
@@ -247,22 +278,29 @@ mouse = (function() {
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'yellow', 'radius':15});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'yellow', 'radius':15});
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    addEntityWithoutName({'x':x,'y':y,'colour':getRandomColor(),
                           'radius':10});
 });
 
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    var obj = null
+    sendJSONXMLHTTPRequest("/world", obj, function(result) {
+        world = result
+        drawNextFrame();
+    });
+
     drawFrame();
+
 }
 
 // 30 frames per second
